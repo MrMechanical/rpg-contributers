@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCXT Contributors</title>
+    <!-- Load the RPG character web component -->
+    <script type="module" src="https://cdn.hax.cloud/cdn/build/es6/node_modules/@haxtheweb/rpg-character/rpg-character.js"></script>
+</head>
+<body>
+    <h1>CCXT Contributors</h1>
+    <!-- Container for contributor characters -->
+    <div id="contributors" style="display: flex; flex-wrap: wrap; justify-content: center;">Loading contributors...</div>
+
+    <!-- JavaScript to fetch and display contributors -->
+    <script type="module">
+        // Function to fetch all contributors, handling pagination
+        async function fetchAllContributors() {
+            let url = 'https://api.github.com/repos/ccxt/ccxt/contributors?per_page=100';
+            let allContributors = [];
+            while (url) {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch contributors');
+                }
+                const contributors = await response.json();
+                allContributors = allContributors.concat(contributors);
+                const linkHeader = response.headers.get('link');
+                url = getNextUrl(linkHeader);
+            }
+            return allContributors;
+        }
+
+        // Parse the Link header to get the next page URL
+        function getNextUrl(linkHeader) {
+            if (!linkHeader) return null;
+            const links = linkHeader.split(',');
+            for (const link of links) {
+                const [urlPart, relPart] = link.split(';');
+                if (relPart.includes('rel="next"')) {
+                    return urlPart.trim().slice(1, -1); // Remove < and >
+                }
+            }
+            return null;
+        }
+
+        // Run after the DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            const contributorsDiv = document.getElementById('contributors');
+            try {
+                const contributors = await fetchAllContributors();
+                contributorsDiv.innerHTML = ''; // Clear loading message
+                contributors.forEach(contributor => {
+                    // Create a div for each contributor
+                    const div = document.createElement('div');
+                    div.style.display = 'inline-block';
+                    div.style.margin = '10px';
+                    div.style.textAlign = 'center';
+
+                    // Create RPG character with username as seed
+                    const character = document.createElement('rpg-character');
+                    character.setAttribute('seed', contributor.login);
+
+                    // Create link to GitHub profile
+                    const name = document.createElement('a');
+                    name.href = contributor.html_url;
+                    name.textContent = contributor.login;
+                    name.target = '_blank';
+                    name.style.display = 'block';
+
+                    // Assemble the contributor card
+                    div.appendChild(character);
+                    div.appendChild(name);
+                    contributorsDiv.appendChild(div);
+                });
+            } catch (error) {
+                contributorsDiv.innerHTML = 'Failed to load contributors.';
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
